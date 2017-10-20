@@ -1,2 +1,2 @@
-# amp_water_pistol
-Cisco AMP Connector Protector Password Decryptor
+# AMPutations
+Cisco AMP Connector Protector Password Decryptor and Service Killer
