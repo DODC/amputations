@@ -111,7 +111,6 @@ def main():
                 print parser.usage
                 sys.exit(0)
  	RHOST = ''
-        builder(LHOST, LPORT)
         sploiter(LHOST, LPORT, session)
  
 if __name__ == "__main__":
